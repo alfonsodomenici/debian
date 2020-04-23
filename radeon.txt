@@ -1,0 +1,188 @@
+
+Debian
+
+Wiki
+Accedi
+
+    PaginaPrincipale
+    ModificheRecenti
+    CercaPagina
+    AiutoContenuti
+
+Debian
+Wiki/
+
+    AccediInformazioniAllegati
+
+    itAtiHowTo 
+
+Translation(s): English - Español - Français - Italiano - Русский
+
+Driver open source per AMD/ATI (amdgpu, radeon, r128, mach64)
+
+Questa pagina descrive l'uso di driver open source per il display per schede grafiche ATI/AMD in sistemi Debian. Per informazioni sul driver proprietario, vedere ATI proprietario.
+
+Indice
+
+    Driver open source per AMD/ATI (amdgpu, radeon, r128, mach64)
+        Identificazione
+        Driver
+            Dispositivi supportati
+            Firmware
+        Installazione
+        Risoluzione dei problemi
+        Configurazione
+        Grafica ibrida
+            Debian Stretch
+        Vedere anche
+        Collegamenti esterni
+
+Identificazione
+
+Il nome in codice o la serie della GPU (Graphics Processing Unit, processore grafico) AMD/ATI di una scheda video installata possono solitamente essere identificati usando il comando lspci. Per esempio:
+
+    $ lspci -nn | grep VGA
+    01:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Barts PRO [Radeon HD 6850] [1002:6739]
+
+Per maggiori informazioni vedere Come identificare un dispositivo PCI.
+
+Driver
+
+Il supporto per il nuovo hardware grafico AMD è fornito dal pacchetto xserver-xorg-video-amdgpu package.
+
+Il supporto per il vecchio hardware grafico AMD (alias ATI) è fornito dal pacchetto wrapper per i driver xserver-xorg-video-ati, che dipende da tre pacchetti per driver hardware-specifici:
+
+    xserver-xorg-video-mach64
+
+    xserver-xorg-video-r128
+
+    xserver-xorg-video-radeon 
+
+Il driver wrapper ati rileva automaticamente se l'hardware dell'utente ha un chipset Radeon, Rage 128, Mach64 o antecedente e carica il driver radeon, r128 o mach64, secondo quanto appropriato.
+
+Dispositivi supportati
+
+Il driver amdgpu in Debian 9 "Stretch" e Debian 10 "Buster" supporta le GPU AMD più nuove.
+
+Il driver radeon in Debian 8 "Jessie" supporta GPU da R100 fino a Hawaii (Radeon 7000 - Radeon R9 290). Vedere la pagina di manuale radeon(4) e la pagina di radeon sul wiki di X per maggiori informazioni.
+
+Firmware
+
+Il firmware proprietario, solo in forma binaria (alias microcodice), è stato rimosso dal driver DRM Radeon del kernel di Debian in linux-2.6 2.6.29-1 per risolvere il bug Debian 494009. Il firmware può essere fornito installando il pacchetto firmware-amd-graphics o firmware-linux-nonfree.
+
+Senza questo pacchetto installato, si hanno spesso basse prestazioni 2D/3D del driver Radeon. Alcune GPU possono richiedere firmware per far funzionare il sistema X Window o per usare un doppio display.
+
+Installazione
+
+La procedura descritta qui di seguito installa i pacchetti del driver open source per il display, i moduli DRI (per l'accelerazione 3D) e il firmware/microcodice del driver:
+
+    Se è stato in precedenza usato il driver nvidia proprietario non libero, allora è necessario disinstallarlo se si desidera usare la grafica accelerata OpenGL. Il modo più facile per farlo è utilizzare il comando:
+
+     # apt-get purge nvidia.
+
+    Non dimenticare il punto (".") dopo nvidia: elimina ogni pacchetto con "nvidia" nel nome.
+
+    Aggiungere le componenti "contrib" e "non-free" a /etc/apt/sources.list, per esempio:
+
+    # Debian 10 "Buster"
+    deb http://deb.debian.org/debian buster main contrib non-free
+
+    Aggiornare l'elenco dei pacchetti disponibili:
+
+    # apt-get update
+
+    Installare i pacchetti firmware-linux-nonfree, libgl1-mesa-dri e xserver-xorg-video-ati:
+
+    # apt-get install firmware-linux-nonfree libgl1-mesa-dri xserver-xorg-video-ati
+
+    Riavviare il sistema per caricare il firmware del dispositivo GPU. 
+
+Risoluzione dei problemi
+
+    L'uso del firmware/microcodice utilizzato dal driver DRM radeon può essere verificato con il comando dmesg. Per esempio:
+
+    $ dmesg | grep -E 'drm|radeon' | grep -iE 'firmware|microcode'
+    [ 5.268609] [drm] Loading BARTS Microcode
+    [ 5.329862] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/BARTS_pfp.bin
+    [ 5.341300] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/BARTS_me.bin
+    [ 5.347745] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/BTC_rlc.bin
+    [ 5.347911] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/BARTS_mc.bin
+    [ 5.353336] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/BARTS_smc.bin
+    [ 5.369449] radeon 0000:01:00.0: firmware: direct-loading firmware radeon/SUMO_uvd.bin
+
+        Se è stato impossibile caricare i file, assicurarsi che il pacchetto firmware-linux-nonfree sia installato (fare riferimento a Installation). 
+
+    Sfarfallamenti dello schermo con Adobe Flash: vedere it/FlashPlayer#flickering. 
+
+Configurazione
+
+Nella maggior parte dei casi non è necessario configurare a mano i driver open source per il display, dato che il server X di Xorg rileva e configura automaticamente l'hardware disponibile.
+
+La configurazione opzionale seguente può essere utilizzata per migliorare le prestazioni 3D. Vedere le pagine di manuale xorg.conf(5) e radeon(4) per maggiori informazioni.
+
+    Section "Device"
+     Driver "radeon"
+     Identifier "My GPU"
+     Option "AccelMethod" "XAA"
+     # XAA/EXA
+     Option "AccelDFS" "1"
+     # 1/0 Attivo per PCIE, disattivato per AGP
+     # Pagina man: Usare o non usare l'hook Accelerated EXA DownloadFromScreen
+     # quando possibile.
+     Option "AGPMode" "1"
+     # 1-8 Non ha effetto sui modelli PCIE.
+     Option "AGPFastWrite" "1"
+     # 1/0 Non ha effetto sui modelli PCIE. Non raccomandato.
+     Option "GARTSize" "64"
+     # 0-64 Megabyte di memoria usata gart (sistema).
+     # A volte impostata erroneamente in modo predefinito a 8MB, vedere il proprio file di log.
+     # Piu' grande sembra essere meglio.
+     Option "EnablePageFlip" "1"
+     # 1/0 Aumenta sostanzialmente le prestazioni 3D
+     # sembra solo in modalità XAA
+     Option "ColorTiling" "1"
+     # 1/0 Aumenta sostanzialmente le prestazioni 3D
+     # ha avuto effetto positivo sulla stabilità del sistema dell'autore di questa sezione
+    EndSection
+
+Grafica ibrida
+
+AMD ha una grafica ibrida con schede Intel. Entrambe le schede vengono attivate a turno surriscaldando il computer e facendo anche molto rumore.
+
+Debian Stretch
+
+Debian Stretch viene fornita con una versione di MESA che gestisce il DRI Offloading. Assicurarsi che siano installati entrambi i driver Intel e radeon. È necessario anche il pacchetto firmware-linux-nonfree per fare funzionare le cose.
+
+Controllare che entrambe le schede siano elencate:
+
+$ xrandr --listproviders
+
+L'elenco visualizzato così dovrebbe contenere i nomi di entrambe le schede e dei driver associati. Per poter far sì che la scheda Radeon gestisce i processi grafici più pesanti usare
+
+$ xrandr --setprovideroffloadsink radeon Intel
+
+Si possono testare le impostazioni con il comando:
+
+$ DRI_PRIME=1 glxinfo | grep "OpenGL renderer"
+
+il cui output dovrebbe mostrare AMD.
+
+Perciò usando l'opzione DRI_PRIME si possono eseguire compiti 3D, giochi o vedere filmati che necessitano di una maggiore potenza grafica.
+
+Vedere anche
+
+    Driver ATI proprietario - Installare il driver proprietario a codice chiuso
+
+    Testare le prestazioni 
+
+Collegamenti esterni
+
+    http://x.org/wiki/radeon 
+
+CategoryHardware CategoryVideo
+
+it/AtiHowTo (modificata l'ultima volta il 2020-03-27 09:43:06)
+
+    Debian privacy policy
+    MoinMoin PoweredPython PoweredDebian Wiki team, bugs and config available.Hosting provided by Metropolitan Area Network Darmstadt 
+
